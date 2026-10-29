@@ -44,8 +44,8 @@
     ];
 
     const THREAT_MESSAGES = [
-      "⚠️ Cảnh báo: Tiền quỹ không phải lá mít! Đóng chậm lần sau ra sân đứng ngoài nhặt bóng bằng miệng, miễn đánh!",
-      "🔥 Nhắn gửi các đồng chí nợ phí: Sân bãi thì vẫn mướt, bia thì vẫn tu ừng ực mà tiền thì lẩn đi đâu? Chuyển khoản ngay kẻo Chủ tịch gạch tên khỏi danh sách vàng!",
+      "⚠️ Cảnh báo nặng đô: Tiền quỹ không phải lá mít! Đóng chậm lần sau ra sân đứng ngoài nhặt bóng bằng miệng, miễn đánh!",
+      "🔥 Nhắn gửi các đồng chí nợ phí: Sân bãi thì vẫn mướt, bia thì vẫn tu ừng ừng mà tiền thì lẩn đi đâu? Chuyển khoản ngay kẻo Chủ tịch gạch tên khỏi danh sách vàng!",
       "🚨 Khất nợ là hành vi thiếu văn hóa tennis! Ai chậm đóng quỹ chuẩn bị tinh thần mang vợt đi thế chấp quán nước ven đường.",
       "⚡ Thông báo nghiêm túc: Trốn nợ quỹ K14, ra sân gặp quả smash thẳng mặt không cần báo trước. Sống chậm lại, chuyển khoản nhanh lên các bố!",
       "🎯 Tiền sân, tiền nhậu, tiền độ đã điểm danh đủ. Các con giợn còn nợ quỹ mau chóng nộp phạt, đừng để anh em phải dùng đến biện pháp nghiệp vụ hình sự!",
@@ -66,10 +66,9 @@
       const [bets, setBets] = useState(() => JSON.parse(localStorage.getItem('k14_bets')) || INITIAL_BETS);
 
       const [randomThreat, setRandomThreat] = useState('');
-      const [activeQR, setActiveQR] = useState(null); // { bankId, accountNo, accountName, amount, label }
+      const [activeQR, setActiveQR] = useState(null);
 
       useEffect(() => {
-        // Lấy ngẫu nhiên câu răn đe mỗi lần mở web
         const chosen = THREAT_MESSAGES[Math.floor(Math.random() * THREAT_MESSAGES.length)];
         setRandomThreat(chosen);
       }, []);
@@ -155,21 +154,15 @@
       const tPresident = members.find(m => m.id === tennisPresidentId) || members[0];
       const bPresident = members.find(m => m.id === betPresidentId) || members[1];
 
-      // Bảng thông báo công nợ chi tiết 6 cột cho từng thành viên
+      // Sheet thông báo 6 cột công nợ
       const notificationRows = useMemo(() => {
         return members.filter(m => m.active).map(m => {
-          // 1. Quỹ sân
           const tInfo = tennisCalculations.memberBreakdown.find(x => x.id === m.id);
           const tennisDebt = tInfo && tInfo.balance < 0 ? Math.abs(tInfo.balance) : 0;
-
-          // 2. Quỹ độ
           const betDebt = (betCalculations.stats[m.id] || {}).unpaidAmount || 0;
-
-          // 3. Quỹ nhậu (nếu net < 0 nghĩa là ăn nhiều hơn trả -> nợ tiền nhậu / nợ người trả bill)
           const nInfo = nhauCalculations.stats[m.id] || { net: 0 };
           const nhauDebt = nInfo.net < 0 ? Math.abs(nInfo.net) : 0;
 
-          // Tìm người trả nhậu gần nhất hoặc người ứng tiền nhiều nhất để gán nợ nhậu
           const latestNhau = nhauList[nhauList.length - 1];
           const nhauPayer = members.find(x => x.id === (latestNhau ? latestNhau.payerId : 'm1')) || tPresident;
 
@@ -223,7 +216,6 @@
           <main className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
             {activeTab === 'thongbao' && (
               <div className="space-y-6">
-                {/* Khung răn đe đòi nợ thay đổi liên tục */}
                 <div className="bg-rose-50 border-2 border-rose-500 text-rose-900 p-5 rounded-2xl shadow-md flex items-start gap-4">
                   <div className="text-3xl">👺</div>
                   <div>
@@ -235,7 +227,7 @@
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
                     <h2 className="text-lg font-black text-emerald-950">Bảng Nhắc Đóng Phí & Công Nợ Chi Tiết</h2>
-                    <span className="text-xs text-slate-500 italic">* Di chuột hoặc bấm vào số tiền để xem mã QR chuyển khoản nhanh.</span>
+                    <span className="text-xs text-slate-500 italic">* Di chuột hoặc bấm vào số tiền nợ để hiện mã QR thanh toán đúng người.</span>
                   </div>
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
@@ -244,9 +236,9 @@
                         <th className="py-3 px-3">Tiền sân bóng</th>
                         <th className="py-3 px-3">Tiền độ</th>
                         <th className="py-3 px-3">Tiền nhậu</th>
-                        <th className="py-3 px-3 bg-emerald-50/60 text-emerald-900">Đóng Chủ tịch Sân ({tPresident.name})</th>
-                        <th className="py-3 px-3 bg-amber-50/60 text-amber-900">Đóng Chủ tịch Độ ({bPresident.name})</th>
-                        <th className="py-3 px-3 bg-blue-50/60 text-blue-900">Đóng Người Nhậu</th>
+                        <th className="py-3 px-3 bg-emerald-50/60 text-emerald-900">Phải đóng Chủ tịch Sân ({tPresident.name})</th>
+                        <th className="py-3 px-3 bg-amber-50/60 text-amber-900">Phải đóng Chủ tịch Độ ({bPresident.name})</th>
+                        <th className="py-3 px-3 bg-blue-50/60 text-blue-900">Phải đóng Người trả nhậu</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -257,10 +249,10 @@
                           <td className="py-3 px-3 font-medium text-slate-700">{formatVND(row.betDebt)}</td>
                           <td className="py-3 px-3 font-medium text-slate-700">{formatVND(row.nhauDebt)}</td>
                           
-                          {/* Đóng Chủ tịch Sân */}
+                          {/* Số tiền phải đóng cho Chủ tịch Sân */}
                           <td 
-                            className="py-3 px-3 font-black text-emerald-700 bg-emerald-50/30 cursor-pointer hover:underline"
-                            title="Bấm để xem QR đóng Chủ tịch Sân"
+                            className="py-3 px-3 font-black text-emerald-700 bg-emerald-50/35 cursor-pointer hover:underline"
+                            title="Bấm để xem QR chuyển khoản Chủ tịch Sân"
                             onClick={() => setActiveQR({
                               bankId: tPresident.bankId,
                               accountNo: tPresident.accountNo,
@@ -272,10 +264,10 @@
                             {formatVND(row.toTennisPresident)}
                           </td>
 
-                          {/* Đóng Chủ tịch Độ */}
+                          {/* Số tiền phải đóng cho Chủ tịch Độ */}
                           <td 
-                            className="py-3 px-3 font-black text-amber-700 bg-amber-50/30 cursor-pointer hover:underline"
-                            title="Bấm để xem QR đóng Chủ tịch Độ"
+                            className="py-3 px-3 font-black text-amber-700 bg-amber-50/35 cursor-pointer hover:underline"
+                            title="Bấm để xem QR chuyển khoản Chủ tịch Độ"
                             onClick={() => setActiveQR({
                               bankId: bPresident.bankId,
                               accountNo: bPresident.accountNo,
@@ -287,10 +279,10 @@
                             {formatVND(row.toBetPresident)}
                           </td>
 
-                          {/* Đóng Người Nhậu */}
+                          {/* Số tiền phải đóng cho người trả nhậu */}
                           <td 
-                            className="py-3 px-3 font-black text-blue-700 bg-blue-50/30 cursor-pointer hover:underline"
-                            title="Bấm để xem QR hoàn tiền nhậu"
+                            className="py-3 px-3 font-black text-blue-700 bg-blue-50/35 cursor-pointer hover:underline"
+                            title="Bấm để xem QR chuyển khoản Người trả nhậu"
                             onClick={() => setActiveQR({
                               bankId: row.nhauPayerObj.bankId || 'VCB',
                               accountNo: row.nhauPayerObj.accountNo || '0011002233445',
@@ -307,7 +299,7 @@
                   </table>
                 </div>
 
-                {/* Modal hiển thị VietQR khi click vào ô tiền */}
+                {/* Modal hiển thị VietQR khi di chuột/click */}
                 {activeQR && (
                   <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 text-center relative animate-scale">

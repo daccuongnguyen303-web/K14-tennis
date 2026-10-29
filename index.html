@@ -44,19 +44,17 @@
     ];
 
     const THREAT_MESSAGES = [
-      "Trốn quỹ là nghiệp quật tay vợt gãy làm đôi đấy nhé! 🎾💥",
-      "Chủ tịch đang mài sẵn dao găm, đóng tiền ngay kẻo muộn! 🔪",
-      "Sắp đến hạn rồi, chuyển khoản nhanh không Chủ tịch cử đòi nợ thuê tới nhà! 💸",
-      "Đánh tennis thì hoa mỹ mà quỹ thì âm dầm, thanh toán lẹ đi bạn ơi! 😆",
-      "Tiền có thể tiêu nhưng quỹ K14 là phải đóng đúng hẹn nghe chưa! ⚡",
-      "Đừng để Chủ tịch phải nhắc tên lần thứ 2 trên nhóm Zalo nhé! 📢",
-      "Nợ quỹ lâu quá rêu phong mọc đầy vợt rồi kìa, chốt đơn chuyển khoản nào! 🌿",
+      "⚠️ Cảnh cáo nghiêm khắc: Đừng để Chủ tịch phải gọi điện trực tiếp nhắc nợ! Tiền quỹ sân và tiền độ chậm ngày nào, vợ con ở nhà lo lắng ngày đó!",
+      "🚨 Thông báo khẩn: Sống trên đời ăn miếng trả miếng, chơi tennis đóng quỹ sòng phẳng. Ai còn nợ phí sang tuần ra sân chuẩn bị tinh thần ôm vợt đứng ngoài nhìn anh em đánh!",
+      "⚡ Nhắc nhở lần cuối: Tiền quỹ không tự sinh ra và cũng không tự mất đi, nó chỉ chạy từ túi kẻ chậm đóng sang túi người thu quỹ. Nộp tiền ngay kẻo muộn!",
+      "🔥 Cây muốn lặng mà gió chẳng ngừng, anh em muốn đánh tennis mà quỹ cứ âm thì đừng trách sao bóng bay thẳng vào mặt lúc ra sân!",
+      "🎯 Kỷ luật tổ K14 thép: Nợ quỹ, nợ độ, nợ nhậu là những tội danh không thể dung thứ. Chuyển khoản ngay lập tức để bảo vệ danh dự bản thân trước hội đồng!"
     ];
 
     const formatVND = (num) => Math.round(num || 0).toLocaleString('vi-VN') + 'đ';
 
     function App() {
-      const [activeTab, setActiveTab] = useState('notice');
+      const [activeTab, setActiveTab] = useState('thongbao');
       const [members, setMembers] = useState(() => JSON.parse(localStorage.getItem('k14_members')) || INITIAL_MEMBERS);
       const [tennisPresidentId, setTennisPresidentId] = useState(() => localStorage.getItem('k14_tennis_pres') || 'm1');
       const [betPresidentId, setBetPresidentId] = useState(() => localStorage.getItem('k14_bet_pres') || 'm2');
@@ -65,16 +63,13 @@
       const [nhauList, setNhauList] = useState(() => JSON.parse(localStorage.getItem('k14_nhau')) || INITIAL_NHAU);
       const [bets, setBets] = useState(() => JSON.parse(localStorage.getItem('k14_bets')) || INITIAL_BETS);
 
-      // Random câu răn đe mỗi khi load trang/mở web
-      const randomThreat = useMemo(() => {
-        const idx = Math.floor(Math.random() * THREAT_MESSAGES.length);
-        return THREAT_MESSAGES[idx];
-      }, []);
+      const [hoveredQR, setHoveredQR] = useState(null); // { bankId, accountNo, accountName, title }
+      const [randomThreat, setRandomThreat] = useState('');
 
-      const [newSession, setNewSession] = useState({ date: '2026-12-10', water: 150000, ballBoy: 200000, balls: 0, overtime: 150000 });
-      const [newNhau, setNewNhau] = useState({ date: '2026-12-12', title: '', payerId: 'm1', totalBill: 2400000, participants: ['m1', 'm2', 'm3', 'm4', 'm7', 'm8'] });
-      const [newBet, setNewBet] = useState({ date: '2026-12-15', matchName: 'Kèo Đôi Nam', winners: ['m1'], losers: ['m3'], score: '6-4', amountPerLoser: 50000 });
-      const [newMember, setNewMember] = useState({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
+      useEffect(() => {
+        const randomIndex = Math.floor(Math.random() * THREAT_MESSAGES.length);
+        setRandomThreat(THREAT_MESSAGES[randomIndex]);
+      }, []);
 
       useEffect(() => { localStorage.setItem('k14_members', JSON.stringify(members)); }, [members]);
       useEffect(() => { localStorage.setItem('k14_tennis_pres', tennisPresidentId); }, [tennisPresidentId]);
@@ -124,10 +119,13 @@
 
       const nhauCalculations = useMemo(() => {
         const stats = {};
-        members.forEach(m => { stats[m.id] = { paidOut: 0, consumed: 0, net: 0 }; });
+        members.forEach(m => { stats[m.id] = { paidOut: 0, consumed: 0, net: 0, lastPayer: null }; });
         nhauList.forEach(item => {
           const bill = Number(item.totalBill || 0);
-          if (stats[item.payerId]) stats[item.payerId].paidOut += bill;
+          if (stats[item.payerId]) {
+            stats[item.payerId].paidOut += bill;
+            stats[item.payerId].lastPayer = item.payerId;
+          }
           const share = bill / (item.participants.length || 1);
           item.participants.forEach(pid => { if (stats[pid]) stats[pid].consumed += share; });
         });
@@ -149,22 +147,34 @@
         return { stats };
       }, [members, bets]);
 
-      const personalDebts = useMemo(() => {
+      const tennisPresident = members.find(m => m.id === tennisPresidentId) || members[0];
+      const betPresident = members.find(m => m.id === betPresidentId) || members[1];
+      const lastNhauPayer = members.find(m => m.id === nhauList[nhauList.length - 1]?.payerId) || members[0];
+
+      const noticeTableData = useMemo(() => {
         return members.filter(m => m.active).map(m => {
           const tInfo = tennisCalculations.memberBreakdown.find(x => x.id === m.id);
           const tennisDebt = tInfo && tInfo.balance < 0 ? Math.abs(tInfo.balance) : 0;
+          
           const nInfo = nhauCalculations.stats[m.id] || { net: 0 };
           const nhauDebt = nInfo.net < 0 ? Math.abs(nInfo.net) : 0;
+          
           const betDebt = (betCalculations.stats[m.id] || {}).unpaidAmount || 0;
-          return { ...m, tennisDebt, nhauDebt, betDebt, totalMustPay: tennisDebt + nhauDebt + betDebt };
+
+          return {
+            ...m,
+            tennisDebt,
+            nhauDebt,
+            betDebt,
+            toTennisPresident: tennisDebt,
+            toBetPresident: betDebt,
+            toNhauPayer: nhauDebt
+          };
         });
       }, [members, tennisCalculations, nhauCalculations, betCalculations]);
 
-      const tennisPresident = members.find(m => m.id === tennisPresidentId) || members[0];
-      const betPresident = members.find(m => m.id === betPresidentId) || members[1];
-
       return (
-        <div className="min-h-screen bg-slate-100 text-slate-800 pb-16">
+        <div className="min-h-screen bg-slate-100 text-slate-800 pb-16 relative">
           <header className="border-b border-emerald-900/20 bg-emerald-950 text-white shadow-md sticky top-0 z-30">
             <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -178,7 +188,7 @@
 
             <div className="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-1.5 pb-2.5">
               {[
-                { id: 'notice', label: '📢 1. Thông Báo & Nhắc Nợ' },
+                { id: 'thongbao', label: '📢 1. Thông Báo & Đòi Nợ' },
                 { id: 'tennis', label: '🎾 2. Quỹ Sân Tennis' },
                 { id: 'nhau', label: '🍻 3. Quỹ Nhậu' },
                 { id: 'do', label: '🏆 4. Kết Quả Độ' },
@@ -198,55 +208,76 @@
           </header>
 
           <main className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
-            {activeTab === 'notice' && (
+            {activeTab === 'thongbao' && (
               <div className="space-y-6">
-                <div className="bg-emerald-900 text-white p-5 rounded-2xl shadow-md border border-emerald-800">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">⚠️</span>
-                    <h2 className="text-lg font-black uppercase tracking-wide">Thông Báo Nhắc Đóng Quỹ Từ Ban Chấp Hành</h2>
-                  </div>
-                  <p className="text-emerald-100 text-sm leading-relaxed italic">
+                {/* Khu vực câu răn đe đòi nợ gắt gao */}
+                <div className="bg-rose-950 border-2 border-rose-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                  <div className="absolute -right-4 -bottom-4 text-rose-900/40 text-8xl font-black select-none pointer-events-none">⚠️</div>
+                  <h2 className="text-lg font-black uppercase tracking-wide text-rose-400 mb-2 flex items-center gap-2">
+                    <span>🚨 GÓC CẢNH BÁO NỢ PHÍ TỔ TENNIS K14</span>
+                  </h2>
+                  <p className="text-sm md:text-base font-semibold text-rose-100 italic leading-relaxed">
                     "{randomThreat}"
                   </p>
+                  <div className="mt-3 text-xs text-rose-300 font-mono">
+                    💡 Mẹo: Di chuột vào các con số tiền nợ trong bảng bên dưới để hiện ngay mã QR chuyển khoản cho đúng người thu!
+                  </div>
                 </div>
 
+                {/* Bảng nhắc đóng tiền 6 cột */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
-                  <h3 className="text-base font-bold mb-4 text-emerald-950">Bảng Tình Trạng Đóng Quỹ & Cảnh Báo Thành Viên</h3>
+                  <h3 className="text-base font-bold mb-3 text-emerald-950">Bảng Tổng Hợp Nhắc Đóng Phí & Thông Tin Chuyển Khoản</h3>
                   <table className="w-full text-left text-sm">
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="py-2.5 px-3">Thành viên</th>
-                        <th className="py-2.5 px-3">Tổng nợ cần đóng</th>
-                        <th className="py-2.5 px-3">Lời răn đe / Trạng thái</th>
+                        <th className="py-3 px-3">Thành viên</th>
+                        <th className="py-3 px-3">Tiền sân bóng</th>
+                        <th className="py-3 px-3">Tiền độ</th>
+                        <th className="py-3 px-3">Tiền nhậu</th>
+                        <th className="py-3 px-3 text-emerald-800">Đóng Chủ tịch Sân</th>
+                        <th className="py-3 px-3 text-amber-800">Đóng Chủ tịch Độ</th>
+                        <th className="py-3 px-3 text-indigo-800">Gửi Người Trả Nhậu</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {personalDebts.map((p, idx) => {
-                        const hasDebt = p.totalMustPay > 0;
-                        const funnyInsults = [
-                          "Đang ngâm cứu chuyển khoản hay chờ phạt đền?",
-                          "Ví dày dặn mà sao nợ quỹ dai thế đồng chí?",
-                          "Cầm vợt thì oai mà nhắc tiền quỹ thì mất hút!",
-                          "Chuyển khoản ngay kẻo vợ tưởng quỹ đen nhé!",
-                          "Sắp bị đưa vào blacklist của sân rồi đấy!",
-                          "Nợ như chúa chổm, đề nghị thanh toán gấp!",
-                          "Đóng nhanh còn được tài trợ nước ngọt buổi tới!"
-                        ];
-                        const msg = hasDebt ? funnyInsults[idx % funnyInsults.length] : "Đã hoàn thành nghĩa vụ công dân, xuất sắc! 🌟";
-                        return (
-                          <tr key={p.id} className="hover:bg-slate-50">
-                            <td className="py-3 px-3 font-bold text-slate-900">{p.name}</td>
-                            <td className={`py-3 px-3 font-black ${hasDebt ? 'text-rose-600' : 'text-emerald-700'}`}>
-                              {formatVND(p.totalMustPay)}
-                            </td>
-                            <td className={`py-3 px-3 text-xs italic font-medium ${hasDebt ? 'text-amber-700' : 'text-emerald-600'}`}>
-                              {msg}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {noticeTableData.map(m => (
+                        <tr key={m.id} className="hover:bg-slate-50">
+                          <td className="py-3 px-3 font-bold text-slate-900">{m.name}</td>
+                          <td className="py-3 px-3">{formatVND(m.tennisDebt)}</td>
+                          <td className="py-3 px-3">{formatVND(m.betDebt)}</td>
+                          <td className="py-3 px-3">{formatVND(m.nhauDebt)}</td>
+                          
+                          {/* Cột đóng Chủ tịch Sân */}
+                          <td 
+                            className="py-3 px-3 font-bold text-emerald-700 cursor-pointer hover:underline"
+                            onMouseEnter={() => setHoveredQR({ bankId: tennisPresident.bankId, accountNo: tennisPresident.accountNo, accountName: tennisPresident.accountName, title: `Đóng Quỹ Sân cho Chủ tịch: ${tennisPresident.name}` })}
+                            onMouseLeave={() => setHoveredQR(null)}
+                          >
+                            {formatVND(m.toTennisPresident)} 📌
+                          </td>
+
+                          {/* Cột đóng Chủ tịch Độ */}
+                          <td 
+                            className="py-3 px-3 font-bold text-amber-700 cursor-pointer hover:underline"
+                            onMouseEnter={() => setHoveredQR({ bankId: betPresident.bankId, accountNo: betPresident.accountNo, accountName: betPresident.accountName, title: `Đóng Tiền Độ cho Chủ tịch Độ: ${betPresident.name}` })}
+                            onMouseLeave={() => setHoveredQR(null)}
+                          >
+                            {formatVND(m.toBetPresident)} 📌
+                          </td>
+
+                          {/* Cột gửi Người trả nhậu */}
+                          <td 
+                            className="py-3 px-3 font-bold text-indigo-700 cursor-pointer hover:underline"
+                            onMouseEnter={() => setHoveredQR({ bankId: lastNhauPayer.bankId, accountNo: lastNhauPayer.accountNo, accountName: lastNhauPayer.accountName, title: `Thanh toán Tiền Nhậu cho: ${lastNhauPayer.name}` })}
+                            onMouseLeave={() => setHoveredQR(null)}
+                          >
+                            {formatVND(m.toNhauPayer)} 📌
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
+                  <p className="text-xs text-slate-400 mt-3 italic">* Lưu ý: Đưa con trỏ chuột vào các con số ở 3 cột cuối để hiện mã QR chuyển khoản tương ứng ngay lập tức.</p>
                 </div>
               </div>
             )}
@@ -269,17 +300,6 @@
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-900/10">
                     <span className="text-xs text-slate-500 font-semibold">Số Dư Quỹ Sân</span>
                     <div className={`text-2xl font-black mt-1 ${tennisCalculations.netFundBalance >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>{formatVND(tennisCalculations.netFundBalance)}</div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h2 className="text-base font-bold text-emerald-900 mb-3">+ Ghi Nhật Ký Buổi Đánh Tennis Mới</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <input type="date" value={newSession.date} onChange={e => setNewSession({...newSession, date: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Tiền nước" value={newSession.water} onChange={e => setNewSession({...newSession, water: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Nhặt bóng" value={newSession.ballBoy} onChange={e => setNewSession({...newSession, ballBoy: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Sân thêm giờ" value={newSession.overtime} onChange={e => setNewSession({...newSession, overtime: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <button onClick={() => setSessions([...sessions, { ...newSession, id: 's_' + Date.now() }])} className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold py-1.5 px-3 rounded-lg text-sm">Lưu Buổi</button>
                   </div>
                 </div>
 
@@ -312,78 +332,54 @@
             )}
 
             {activeTab === 'nhau' && (
-              <div className="space-y-6">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h2 className="text-base font-bold text-emerald-900 mb-3">+ Thêm Buổi Nhậu Mới</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                    <input type="date" value={newNhau.date} onChange={e => setNewNhau({...newNhau, date: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="text" placeholder="Tên quán / Nội dung" value={newNhau.title} onChange={e => setNewNhau({...newNhau, title: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Tổng Bill" value={newNhau.totalBill} onChange={e => setNewNhau({...newNhau, totalBill: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-emerald-900" />
-                    <button onClick={() => setNhauList([...nhauList, { ...newNhau, id: 'n_' + Date.now(), title: newNhau.title || 'Nhậu K14' }])} className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold py-1.5 px-3 rounded-lg text-sm">Lưu Buổi Nhậu</button>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
-                  <h3 className="text-base font-bold mb-3 text-emerald-950">Danh Sách Quỹ Nhậu</h3>
-                  <table className="w-full text-left text-sm">
-                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="py-2.5 px-3">Ngày</th>
-                        <th className="py-2.5 px-3">Nội dung</th>
-                        <th className="py-2.5 px-3">Tổng Bill</th>
-                        <th className="py-2.5 px-3">Số người</th>
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
+                <h3 className="text-base font-bold mb-3 text-emerald-950">Danh Sách Quỹ Nhậu</h3>
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-3">Ngày</th>
+                      <th className="py-2.5 px-3">Nội dung</th>
+                      <th className="py-2.5 px-3">Tổng Bill</th>
+                      <th className="py-2.5 px-3">Số người</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {nhauList.map(n => (
+                      <tr key={n.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-3 text-slate-600">{n.date}</td>
+                        <td className="py-3 px-3 font-bold text-slate-900">{n.title}</td>
+                        <td className="py-3 px-3 font-bold text-emerald-800">{formatVND(n.totalBill)}</td>
+                        <td className="py-3 px-3 text-slate-600">{n.participants.length} người</td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {nhauList.map(n => (
-                        <tr key={n.id} className="hover:bg-slate-50">
-                          <td className="py-3 px-3 text-slate-600">{n.date}</td>
-                          <td className="py-3 px-3 font-bold text-slate-900">{n.title}</td>
-                          <td className="py-3 px-3 font-bold text-emerald-800">{formatVND(n.totalBill)}</td>
-                          <td className="py-3 px-3 text-slate-600">{n.participants.length} người</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
             {activeTab === 'do' && (
-              <div className="space-y-6">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h2 className="text-base font-bold text-emerald-900 mb-3">+ Ghi Nhận Trận Độ (Tự động 50k tháng cuối quý)</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                    <input type="date" value={newBet.date} onChange={e => setNewBet({...newBet, date: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="text" placeholder="Tên trận" value={newBet.matchName} onChange={e => setNewBet({...newBet, matchName: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Tiền thua/người" value={newBet.amountPerLoser} onChange={e => setNewBet({...newBet, amountPerLoser: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-emerald-900" />
-                    <button onClick={() => setBets([{ ...newBet, id: 'b_' + Date.now(), paidByLosers: [] }, ...bets])} className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold py-1.5 px-3 rounded-lg text-sm">Lưu Kèo Độ</button>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
-                  <h3 className="text-base font-bold mb-3 text-emerald-950">Sheet Kết Quả Độ Tennis</h3>
-                  <table className="w-full text-left text-sm">
-                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="py-2.5 px-3">Ngày</th>
-                        <th className="py-2.5 px-3">Trận đấu</th>
-                        <th className="py-2.5 px-3">Tỷ số</th>
-                        <th className="py-2.5 px-3">Tiền thua/người</th>
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
+                <h3 className="text-base font-bold mb-3 text-emerald-950">Sheet Kết Quả Độ Tennis</h3>
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-3">Ngày</th>
+                      <th className="py-2.5 px-3">Trận đấu</th>
+                      <th className="py-2.5 px-3">Tỷ số</th>
+                      <th className="py-2.5 px-3">Tiền thua/người</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bets.map(b => (
+                      <tr key={b.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-3 text-slate-600">{b.date}</td>
+                        <td className="py-3 px-3 font-bold text-slate-900">{b.matchName}</td>
+                        <td className="py-3 px-3 text-emerald-700 font-bold">{b.score}</td>
+                        <td className="py-3 px-3 text-emerald-900 font-bold">{formatVND(b.amountPerLoser)}</td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {bets.map(b => (
-                        <tr key={b.id} className="hover:bg-slate-50">
-                          <td className="py-3 px-3 text-slate-600">{b.date}</td>
-                          <td className="py-3 px-3 font-bold text-slate-900">{b.matchName}</td>
-                          <td className="py-3 px-3 text-emerald-700 font-bold">{b.score}</td>
-                          <td className="py-3 px-3 text-emerald-900 font-bold">{formatVND(b.amountPerLoser)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
@@ -401,7 +397,7 @@
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {personalDebts.map(p => (
+                    {noticeTableData.map(p => (
                       <tr key={p.id} className="hover:bg-slate-50">
                         <td className="py-3 px-3 font-bold text-slate-900">{p.name}</td>
                         <td className="py-3 px-3">{p.tennisDebt > 0 ? formatVND(p.tennisDebt) : '0đ'}</td>
@@ -436,45 +432,44 @@
             )}
 
             {activeTab === 'members' && (
-              <div className="space-y-6">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h3 className="text-base font-bold text-emerald-900 mb-3">+ Thêm Thành Viên Mới</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <input type="text" placeholder="Họ tên / Biệt danh" value={newMember.name} onChange={e => setNewMember({...newMember, name: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-                    <input type="date" value={newMember.joinDate} onChange={e => setNewMember({...newMember, joinDate: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-                    <input type="text" placeholder="Ngân hàng (VCB, VIB...)" value={newMember.bankId} onChange={e => setNewMember({...newMember, bankId: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-                    <button onClick={() => {
-                      if (!newMember.name) return alert('Nhập tên thành viên!');
-                      setMembers([...members, { ...newMember, id: 'm_' + Date.now(), active: true, inTennis: true, inNhau: true, inDo: true, quarterPaid: 2000000, accountName: newMember.name.toUpperCase() }]);
-                      setNewMember({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
-                    }} className="bg-emerald-900 text-white font-bold rounded-lg px-4 py-1.5 text-sm">Thêm Thành Viên</button>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
-                  <h3 className="text-base font-bold mb-3 text-emerald-950">Danh Sách Thành Viên K14 ({members.length})</h3>
-                  <table className="w-full text-left text-sm">
-                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="py-2.5 px-3">Tên</th>
-                        <th className="py-2.5 px-3">Ngày vào</th>
-                        <th className="py-2.5 px-3">Ngân hàng & STK</th>
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
+                <h3 className="text-base font-bold mb-3 text-emerald-950">Danh Sách Thành Viên K14 ({members.length})</h3>
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-3">Tên</th>
+                      <th className="py-2.5 px-3">Ngày vào</th>
+                      <th className="py-2.5 px-3">Ngân hàng & STK</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {members.map(m => (
+                      <tr key={m.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-3 font-bold text-slate-900">{m.name}</td>
+                        <td className="py-3 px-3 text-xs text-slate-500">{m.joinDate}</td>
+                        <td className="py-3 px-3 text-xs text-slate-600">{m.bankId} - {m.accountNo}</td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {members.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-50">
-                          <td className="py-3 px-3 font-bold text-slate-900">{m.name}</td>
-                          <td className="py-3 px-3 text-xs text-slate-500">{m.joinDate}</td>
-                          <td className="py-3 px-3 text-xs text-slate-600">{m.bankId} - {m.accountNo}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </main>
+
+          {/* Popup VietQR nổi lên khi di chuột vào ô nợ ở Tab Thông Báo */}
+          {hoveredQR && (
+            <div className="fixed bottom-6 right-6 z-50 bg-white border-2 border-emerald-800 p-4 rounded-2xl shadow-2xl max-w-xs animate-bounce-short">
+              <div className="text-xs font-bold text-emerald-900 mb-1">{hoveredQR.title}</div>
+              <div className="text-[11px] text-slate-600 mb-2">{hoveredQR.bankId} - {hoveredQR.accountNo}</div>
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                <img 
+                  src={`https://img.vietqr.io/image/${hoveredQR.bankId}-${hoveredQR.accountNo}-compact2.png?amount=0&addInfo=K14&accountName=${encodeURIComponent(hoveredQR.accountName)}`} 
+                  alt="QR" 
+                  className="w-48 h-auto mx-auto rounded" 
+                />
+              </div>
+            </div>
+          )}
         </div>
       );
     }

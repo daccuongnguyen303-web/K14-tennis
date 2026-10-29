@@ -73,10 +73,8 @@
         setRandomThreat(chosen);
       }, []);
 
-      // State form buổi đánh tennis mới
       const [newSession, setNewSession] = useState({ date: '2026-12-10', ballBoyAndWater: 300000, overtime: 150000, note: '' });
 
-      // State form nhậu
       const [newNhau, setNewNhau] = useState({
         date: '2026-12-12',
         title: 'Tăng 2 sau sân',
@@ -85,7 +83,6 @@
         participants: INITIAL_MEMBERS.filter(m => m.inNhau).map(m => m.id)
       });
 
-      // State form độ (hỗ trợ cả tạo mới và sửa)
       const [editingBetId, setEditingBetId] = useState(null);
       const [newBet, setNewBet] = useState({
         date: '2026-12-15',
@@ -96,7 +93,9 @@
         losers: ['m3', 'm4']
       });
 
-      const [newMember, setNewMember] = useState({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
+      // State form quản lý thành viên (Thêm & Sửa)
+      const [editingMemberId, setEditingMemberId] = useState(null);
+      const [memberForm, setMemberForm] = useState({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
 
       useEffect(() => { localStorage.setItem('k14_members', JSON.stringify(members)); }, [members]);
       useEffect(() => { localStorage.setItem('k14_tennis_pres', tennisPresidentId); }, [tennisPresidentId]);
@@ -352,7 +351,6 @@
               </div>
             )}
 
-            {/* TAB 2: QUỸ SÂN TENNIS */}
             {activeTab === 'tennis' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -374,7 +372,6 @@
                   </div>
                 </div>
 
-                {/* Form thêm buổi đánh mới với các tiêu đề theo yêu cầu */}
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
                   <h2 className="text-base font-bold text-emerald-900">+ Ghi Nhật Ký Buổi Đánh Tennis Mới</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -409,7 +406,6 @@
                   </button>
                 </div>
 
-                {/* Bảng Lịch sử 12 buổi đánh gần nhất & nút xóa */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
                   <h3 className="text-base font-bold mb-3 text-emerald-950">Lịch Sử Các Buổi Đánh (Hiển thị 12 dòng gần nhất)</h3>
                   <table className="w-full text-left text-sm whitespace-nowrap">
@@ -475,7 +471,6 @@
               </div>
             )}
 
-            {/* TAB 3: QUỸ NHẬU - Di chuột vào cột số người hiện tên thành viên */}
             {activeTab === 'nhau' && (
               <div className="space-y-6">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
@@ -569,7 +564,6 @@
                         const payer = members.find(m => m.id === n.payerId) || {};
                         const count = n.participants ? n.participants.length : 1;
                         const perPerson = n.totalBill / count;
-                        // Tạo tooltip tên các thành viên tham gia
                         const participantNames = (n.participants || []).map(pid => (members.find(m => m.id === pid) || {}).name).filter(Boolean).join(', ');
                         return (
                           <tr key={n.id} className="hover:bg-slate-50">
@@ -599,7 +593,6 @@
               </div>
             )}
 
-            {/* TAB 4: KẾT QUẢ ĐỘ - Thêm tính năng sửa hoặc xóa từng dòng lịch sử */}
             {activeTab === 'do' && (
               <div className="space-y-6">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
@@ -828,20 +821,77 @@
               </div>
             )}
 
+            {/* TAB 7: QUẢN LÝ THÀNH VIÊN - Cho phép Thêm, Sửa thông tin (Tên, ngày vào, ngân hàng, STK) và Xóa */}
             {activeTab === 'members' && (
               <div className="space-y-6">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h3 className="text-base font-bold text-emerald-900 mb-3">+ Thêm Thành Viên Mới</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <input type="text" placeholder="Họ tên / Biệt danh" value={newMember.name} onChange={e => setNewMember({...newMember, name: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-                    <input type="date" value={newMember.joinDate} onChange={e => setNewMember({...newMember, joinDate: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-                    <input type="text" placeholder="Ngân hàng (VCB, VIB...)" value={newMember.bankId} onChange={e => setNewMember({...newMember, bankId: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-                    <button onClick={() => {
-                      if (!newMember.name) return alert('Nhập tên thành viên!');
-                      setMembers([...members, { ...newMember, id: 'm_' + Date.now(), active: true, inTennis: true, inNhau: true, inDo: true, quarterPaid: 2000000, accountName: newMember.name.toUpperCase() }]);
-                      setNewMember({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
-                    }} className="bg-emerald-900 text-white font-bold rounded-lg px-4 py-1.5 text-sm">Thêm Thành Viên</button>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-base font-bold text-emerald-900">
+                      {editingMemberId ? '✏️ Chỉnh Sửa Thông Tin Thành Viên' : '+ Thêm Thành Viên Mới'}
+                    </h3>
+                    {editingMemberId && (
+                      <button onClick={() => {
+                        setEditingMemberId(null);
+                        setMemberForm({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
+                      }} className="text-xs text-rose-600 font-bold underline">Hủy sửa</button>
+                    )}
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Họ tên / Biệt danh</label>
+                      <input type="text" placeholder="VD: Nam 'Forehand'" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Ngày vào</label>
+                      <input type="date" value={memberForm.joinDate} onChange={e => setMemberForm({...memberForm, joinDate: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Ngân hàng (VCB, VIB, TCB...)</label>
+                      <input type="text" placeholder="VCB" value={memberForm.bankId} onChange={e => setMemberForm({...memberForm, bankId: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm uppercase" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Số tài khoản (STK)</label>
+                      <input type="text" placeholder="0123456789" value={memberForm.accountNo} onChange={e => setMemberForm({...memberForm, accountNo: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-bold" />
+                    </div>
+                  </div>
+
+                  <button onClick={() => {
+                    if (!memberForm.name) return alert('Vui lòng nhập họ tên thành viên!');
+                    if (!memberForm.accountNo) return alert('Vui lòng nhập số tài khoản ngân hàng!');
+
+                    if (editingMemberId) {
+                      setMembers(members.map(m => m.id === editingMemberId ? {
+                        ...m,
+                        name: memberForm.name,
+                        joinDate: memberForm.joinDate,
+                        bankId: memberForm.bankId.toUpperCase(),
+                        accountNo: memberForm.accountNo,
+                        accountName: memberForm.name.toUpperCase()
+                      } : m));
+                      setEditingMemberId(null);
+                      alert('Đã cập nhật thông tin thành viên thành công!');
+                    } else {
+                      const newMem = {
+                        id: 'm_' + Date.now(),
+                        name: memberForm.name,
+                        joinDate: memberForm.joinDate,
+                        active: true,
+                        inTennis: true,
+                        inNhau: true,
+                        inDo: true,
+                        quarterPaid: 2000000,
+                        bankId: memberForm.bankId.toUpperCase() || 'VCB',
+                        accountNo: memberForm.accountNo,
+                        accountName: memberForm.name.toUpperCase()
+                      };
+                      setMembers([...members, newMem]);
+                      alert('Đã thêm thành viên mới thành công!');
+                    }
+                    setMemberForm({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
+                  }} className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl text-sm shadow">
+                    {editingMemberId ? 'Cập Nhật Thông Tin' : 'Thêm Thành Viên Vào Quỹ'}
+                  </button>
                 </div>
 
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
@@ -849,9 +899,10 @@
                   <table className="w-full text-left text-sm">
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="py-2.5 px-3">Tên</th>
-                        <th className="py-2.5 px-3">Ngày vào</th>
+                        <th className="py-2.5 px-3">Họ tên / Biệt danh</th>
+                        <th className="py-2.5 px-3">Ngày gia nhập</th>
                         <th className="py-2.5 px-3">Ngân hàng & STK</th>
+                        <th className="py-2.5 px-3 text-center">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -859,7 +910,19 @@
                         <tr key={m.id} className="hover:bg-slate-50">
                           <td className="py-3 px-3 font-bold text-slate-900">{m.name}</td>
                           <td className="py-3 px-3 text-xs text-slate-500">{m.joinDate}</td>
-                          <td className="py-3 px-3 text-xs text-slate-600">{m.bankId} - {m.accountNo}</td>
+                          <td className="py-3 px-3 text-xs font-semibold text-slate-700">{m.bankId} - {m.accountNo}</td>
+                          <td className="py-3 px-3 text-center space-x-1">
+                            <button onClick={() => {
+                              setEditingMemberId(m.id);
+                              setMemberForm({ name: m.name, joinDate: m.joinDate, bankId: m.bankId, accountNo: m.accountNo });
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }} className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-xs font-bold">Sửa</button>
+                            <button onClick={() => {
+                              if(confirm(`Bạn có chắc muốn xóa thành viên ${m.name}?`)) {
+                                setMembers(members.filter(item => item.id !== m.id));
+                              }
+                            }} className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded text-xs font-bold">Xóa</button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

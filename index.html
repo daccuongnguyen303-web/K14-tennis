@@ -30,8 +30,8 @@
     ];
 
     const INITIAL_SESSIONS = [
-      { id: 's1', date: '2026-10-08', water: 120000, ballBoy: 150000, balls: 180000, overtime: 200000, note: 'Mở màn Quý 4' },
-      { id: 's2', date: '2026-11-05', water: 150000, ballBoy: 200000, balls: 0, overtime: 150000, note: 'Chào mừng Kiên Smash' },
+      { id: 's1', date: '2026-10-08', ballBoyAndWater: 270000, overtime: 200000, note: 'Mở màn Quý 4' },
+      { id: 's2', date: '2026-11-05', ballBoyAndWater: 350000, overtime: 150000, note: 'Chào mừng Kiên Smash' },
     ];
 
     const INITIAL_NHAU = [
@@ -39,8 +39,8 @@
     ];
 
     const INITIAL_BETS = [
-      { id: 'b1', date: '2026-10-12', matchName: 'Đôi Nam Đỉnh Cao', winners: ['m1', 'm2'], losers: ['m3', 'm4'], score: '6-4', amountPerLoser: 30000, paidByLosers: [] },
-      { id: 'b2', date: '2026-12-03', matchName: 'Siêu Kinh Điển Cuối Quý', winners: ['m1', 'm3'], losers: ['m2', 'm5'], score: '7-5', amountPerLoser: 50000, paidByLosers: [] },
+      { id: 'b1', date: '2026-10-12', matchName: 'Đôi Nam Đỉnh Cao', score: '6-4', amountPerLoser: 30000, winners: ['m1', 'm2'], losers: ['m3', 'm4'], paidByLosers: [] },
+      { id: 'b2', date: '2026-12-03', matchName: 'Siêu Kinh Điển Cuối Quý', score: '7-5', amountPerLoser: 50000, winners: ['m1', 'm3'], losers: ['m2', 'm5'], paidByLosers: [] },
     ];
 
     const THREAT_MESSAGES = [
@@ -73,9 +73,10 @@
         setRandomThreat(chosen);
       }, []);
 
-      const [newSession, setNewSession] = useState({ date: '2026-12-10', water: 150000, ballBoy: 200000, balls: 0, overtime: 150000 });
-      
-      // State form tạo buổi nhậu mới
+      // State form buổi đánh tennis mới
+      const [newSession, setNewSession] = useState({ date: '2026-12-10', ballBoyAndWater: 300000, overtime: 150000, note: '' });
+
+      // State form nhậu
       const [newNhau, setNewNhau] = useState({
         date: '2026-12-12',
         title: 'Tăng 2 sau sân',
@@ -84,7 +85,8 @@
         participants: INITIAL_MEMBERS.filter(m => m.inNhau).map(m => m.id)
       });
 
-      // State form tạo trận độ mới
+      // State form độ (hỗ trợ cả tạo mới và sửa)
+      const [editingBetId, setEditingBetId] = useState(null);
       const [newBet, setNewBet] = useState({
         date: '2026-12-15',
         matchName: 'Kèo Đôi Nam',
@@ -123,7 +125,7 @@
         let totalSessionsCost = 0;
 
         sessions.forEach(s => {
-          const sCost = Number(s.water || 0) + Number(s.ballBoy || 0) + Number(s.balls || 0) + Number(s.overtime || 0);
+          const sCost = Number(s.ballBoyAndWater || 0) + Number(s.overtime || 0);
           totalSessionsCost += sCost;
           const eligible = tennisMembers.filter(m => new Date(m.joinDate) <= new Date(s.date));
           const count = eligible.length || 1;
@@ -350,6 +352,7 @@
               </div>
             )}
 
+            {/* TAB 2: QUỸ SÂN TENNIS */}
             {activeTab === 'tennis' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -362,7 +365,7 @@
                     <input type="number" value={quarterConfig.baseCourtBookingFee} onChange={e => setQuarterConfig({...quarterConfig, baseCourtBookingFee: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-lg font-bold text-slate-800 mt-1" />
                   </div>
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-900/10">
-                    <span className="text-xs text-slate-500 font-semibold">Nước + Nhặt Bóng + Thêm Giờ</span>
+                    <span className="text-xs text-slate-500 font-semibold">Tổng Chi Phí Các Buổi</span>
                     <div className="text-2xl font-black text-emerald-700 mt-1">{formatVND(tennisCalculations.totalSessionsCost)}</div>
                   </div>
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-900/10">
@@ -371,15 +374,77 @@
                   </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h2 className="text-base font-bold text-emerald-900 mb-3">+ Ghi Nhật Ký Buổi Đánh Tennis Mới</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <input type="date" value={newSession.date} onChange={e => setNewSession({...newSession, date: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Tiền nước" value={newSession.water} onChange={e => setNewSession({...newSession, water: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Nhặt bóng" value={newSession.ballBoy} onChange={e => setNewSession({...newSession, ballBoy: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Sân thêm giờ" value={newSession.overtime} onChange={e => setNewSession({...newSession, overtime: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <button onClick={() => setSessions([...sessions, { ...newSession, id: 's_' + Date.now() }])} className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold py-1.5 px-3 rounded-lg text-sm">Lưu Buổi</button>
+                {/* Form thêm buổi đánh mới với các tiêu đề theo yêu cầu */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
+                  <h2 className="text-base font-bold text-emerald-900">+ Ghi Nhật Ký Buổi Đánh Tennis Mới</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Ngày đánh</label>
+                      <input type="date" value={newSession.date} onChange={e => setNewSession({...newSession, date: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Tiền nhặt bóng + nước</label>
+                      <input type="number" placeholder="VD: 300000" value={newSession.ballBoyAndWater} onChange={e => setNewSession({...newSession, ballBoyAndWater: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-semibold" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Tiền đánh thêm giờ</label>
+                      <input type="number" placeholder="VD: 150000" value={newSession.overtime} onChange={e => setNewSession({...newSession, overtime: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-semibold" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Tổng số tiền (Tự tính)</label>
+                      <div className="w-full bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 text-sm font-black text-emerald-900 flex items-center">
+                        {formatVND(Number(newSession.ballBoyAndWater || 0) + Number(newSession.overtime || 0))}
+                      </div>
+                    </div>
                   </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Ghi chú buổi đánh</label>
+                    <input type="text" placeholder="VD: Đánh kèo đôi căng thẳng" value={newSession.note} onChange={e => setNewSession({...newSession, note: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
+                  </div>
+                  <button onClick={() => {
+                    setSessions([{ ...newSession, id: 's_' + Date.now() }, ...sessions]);
+                    alert('Đã lưu buổi đánh mới!');
+                  }} className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl text-sm shadow">
+                    Lưu Buổi Đánh Tennis
+                  </button>
+                </div>
+
+                {/* Bảng Lịch sử 12 buổi đánh gần nhất & nút xóa */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
+                  <h3 className="text-base font-bold mb-3 text-emerald-950">Lịch Sử Các Buổi Đánh (Hiển thị 12 dòng gần nhất)</h3>
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Ngày đánh</th>
+                        <th className="py-2.5 px-3">Tiền nhặt bóng + nước</th>
+                        <th className="py-2.5 px-3">Tiền đánh thêm giờ</th>
+                        <th className="py-2.5 px-3">Tổng số tiền</th>
+                        <th className="py-2.5 px-3">Ghi chú</th>
+                        <th className="py-2.5 px-3 text-center">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {sessions.slice(0, 12).map(s => {
+                        const totalS = Number(s.ballBoyAndWater || 0) + Number(s.overtime || 0);
+                        return (
+                          <tr key={s.id} className="hover:bg-slate-50">
+                            <td className="py-3 px-3 text-slate-600">{s.date}</td>
+                            <td className="py-3 px-3">{formatVND(s.ballBoyAndWater)}</td>
+                            <td className="py-3 px-3">{formatVND(s.overtime)}</td>
+                            <td className="py-3 px-3 font-black text-emerald-800">{formatVND(totalS)}</td>
+                            <td className="py-3 px-3 text-slate-500">{s.note || '-'}</td>
+                            <td className="py-3 px-3 text-center">
+                              <button onClick={() => {
+                                if(confirm('Bạn có chắc muốn xóa buổi đánh này?')) {
+                                  setSessions(sessions.filter(item => item.id !== s.id));
+                                }
+                              }} className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded text-xs font-bold">Xóa</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
 
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
@@ -410,7 +475,7 @@
               </div>
             )}
 
-            {/* TAB 3: QUỸ NHẬU - Chọn người tham gia và chia đều */}
+            {/* TAB 3: QUỸ NHẬU - Di chuột vào cột số người hiện tên thành viên */}
             {activeTab === 'nhau' && (
               <div className="space-y-6">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
@@ -431,21 +496,18 @@
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">Người đứng ra ứng tiền trước (Chủ chi)</label>
-                      <select value={newNhau.payerId} onChange={e => setNewNhau({...newNhau, payerId: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold">
-                        {members.map(m => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Người đứng ra ứng tiền trước (Chủ chi)</label>
+                    <select value={newNhau.payerId} onChange={e => setNewNhau({...newNhau, payerId: e.target.value})} className="w-full md:w-1/3 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold">
+                      {members.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Chọn thành viên tham gia nhậu */}
                   <div>
                     <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-xs font-bold text-slate-700 uppercase">Thành viên tham gia nhậu (Chia đều bill):</label>
+                      <label className="text-xs font-bold text-slate-700 uppercase">Thành viên tham gia nhậu:</label>
                       <div className="space-x-2 text-xs">
                         <button type="button" onClick={() => setNewNhau({...newNhau, participants: members.map(m => m.id)})} className="text-emerald-800 font-bold hover:underline">Chọn tất cả</button>
                         <span>•</span>
@@ -466,7 +528,7 @@
                                   : newNhau.participants.filter(id => id !== m.id);
                                 setNewNhau({...newNhau, participants: list});
                               }}
-                              className="rounded text-emerald-900 focus:ring-emerald-800"
+                              className="rounded text-emerald-900"
                             />
                             <span className="truncate">{m.name}</span>
                           </label>
@@ -480,7 +542,7 @@
                       if (!newNhau.title) return alert('Vui lòng nhập tên quán hoặc nội dung nhậu!');
                       if (newNhau.participants.length === 0) return alert('Vui lòng chọn ít nhất 1 người tham gia nhậu!');
                       setNhauList([...nhauList, { ...newNhau, id: 'n_' + Date.now() }]);
-                      alert('Đã lưu buổi nhậu và tự động chia đều cho anh em!');
+                      alert('Đã lưu buổi nhậu thành công!');
                     }} 
                     className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl text-sm shadow"
                   >
@@ -488,7 +550,6 @@
                   </button>
                 </div>
 
-                {/* Danh sách các buổi nhậu đã lưu */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
                   <h3 className="text-base font-bold mb-3 text-emerald-950">Lịch Sử Các Buổi Nhậu</h3>
                   <table className="w-full text-left text-sm">
@@ -498,8 +559,9 @@
                         <th className="py-2.5 px-3">Nội dung</th>
                         <th className="py-2.5 px-3">Người ứng tiền</th>
                         <th className="py-2.5 px-3">Tổng Bill</th>
-                        <th className="py-2.5 px-3">Số người</th>
+                        <th className="py-2.5 px-3">Số người (Di chuột xem tên)</th>
                         <th className="py-2.5 px-3">Mỗi người trả</th>
+                        <th className="py-2.5 px-3 text-center">Xóa</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -507,14 +569,27 @@
                         const payer = members.find(m => m.id === n.payerId) || {};
                         const count = n.participants ? n.participants.length : 1;
                         const perPerson = n.totalBill / count;
+                        // Tạo tooltip tên các thành viên tham gia
+                        const participantNames = (n.participants || []).map(pid => (members.find(m => m.id === pid) || {}).name).filter(Boolean).join(', ');
                         return (
                           <tr key={n.id} className="hover:bg-slate-50">
                             <td className="py-3 px-3 text-slate-600">{n.date}</td>
                             <td className="py-3 px-3 font-bold text-slate-900">{n.title}</td>
                             <td className="py-3 px-3 text-emerald-800 font-semibold">{payer.name || 'N/A'}</td>
                             <td className="py-3 px-3 font-bold text-emerald-900">{formatVND(n.totalBill)}</td>
-                            <td className="py-3 px-3">{count} người</td>
+                            <td className="py-3 px-3">
+                              <span className="underline decoration-dotted cursor-help text-emerald-800 font-bold" title={`Thành viên tham gia: ${participantNames}`}>
+                                {count} người (Xem)
+                              </span>
+                            </td>
                             <td className="py-3 px-3 font-bold text-slate-700">{formatVND(perPerson)}</td>
+                            <td className="py-3 px-3 text-center">
+                              <button onClick={() => {
+                                if(confirm('Bạn có muốn xóa buổi nhậu này?')) {
+                                  setNhauList(nhauList.filter(item => item.id !== n.id));
+                                }
+                              }} className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded text-xs font-bold">Xóa</button>
+                            </td>
                           </tr>
                         );
                       })}
@@ -524,11 +599,21 @@
               </div>
             )}
 
-            {/* TAB 4: KẾT QUẢ ĐỘ - Chọn người chơi, chọn bên thắng/thua, tỷ số và số tiền tùy ý */}
+            {/* TAB 4: KẾT QUẢ ĐỘ - Thêm tính năng sửa hoặc xóa từng dòng lịch sử */}
             {activeTab === 'do' && (
               <div className="space-y-6">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
-                  <h2 className="text-base font-bold text-emerald-900">+ Ghi Nhận Trận Độ Tennis Mới</h2>
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-base font-bold text-emerald-900">
+                      {editingBetId ? '✏️ Sửa Lại Trận Độ' : '+ Ghi Nhận Trận Độ Tennis Mới'}
+                    </h2>
+                    {editingBetId && (
+                      <button onClick={() => {
+                        setEditingBetId(null);
+                        setNewBet({ date: '2026-12-15', matchName: 'Kèo Đôi Nam', score: '6-4', amountPerLoser: 50000, winners: ['m1', 'm2'], losers: ['m3', 'm4'] });
+                      }} className="text-xs text-rose-600 font-bold underline">Hủy sửa</button>
+                    )}
+                  </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
@@ -577,11 +662,9 @@
                       onChange={e => setNewBet({...newBet, amountPerLoser: Number(e.target.value)})} 
                       className="w-full md:w-1/3 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-rose-600" 
                     />
-                    <span className="text-xs text-slate-500 ml-2">(Tháng cuối quý tự động gợi ý 50.000đ, có thể sửa thoải mái)</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    {/* Chọn bên THẮNG */}
                     <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200">
                       <label className="text-xs font-bold text-emerald-900 uppercase block mb-2">👑 Chọn người chơi BÊN THẮNG:</label>
                       <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -605,7 +688,6 @@
                       </div>
                     </div>
 
-                    {/* Chọn bên THUA */}
                     <div className="bg-rose-50/60 p-4 rounded-xl border border-rose-200">
                       <label className="text-xs font-bold text-rose-900 uppercase block mb-2">💀 Chọn người chơi BÊN THUA (Nộp phạt):</label>
                       <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -634,18 +716,25 @@
                     onClick={() => {
                       if (!newBet.matchName) return alert('Vui lòng nhập tên trận đấu!');
                       if (newBet.winners.length === 0 || newBet.losers.length === 0) return alert('Vui lòng chọn đầy đủ người ở cả bên Thắng và bên Thua!');
-                      setBets([{ ...newBet, id: 'b_' + Date.now(), paidByLosers: [] }, ...bets]);
-                      alert('Đã ghi nhận kết quả độ thành công!');
+                      
+                      if (editingBetId) {
+                        setBets(bets.map(b => b.id === editingBetId ? { ...newBet, id: editingBetId, paidByLosers: b.paidByLosers } : b));
+                        setEditingBetId(null);
+                        alert('Đã cập nhật lại trận độ thành công!');
+                      } else {
+                        setBets([{ ...newBet, id: 'b_' + Date.now(), paidByLosers: [] }, ...bets]);
+                        alert('Đã lưu kết quả trận độ thành công!');
+                      }
+                      setNewBet({ date: '2026-12-15', matchName: 'Kèo Đôi Nam', score: '6-4', amountPerLoser: 50000, winners: ['m1', 'm2'], losers: ['m3', 'm4'] });
                     }} 
                     className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl text-sm shadow"
                   >
-                    Lưu Kết Quả Trận Độ
+                    {editingBetId ? 'Cập Nhật Lại Trận Độ' : 'Lưu Kết Quả Trận Độ'}
                   </button>
                 </div>
 
-                {/* Danh sách trận độ đã đá */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
-                  <h3 className="text-base font-bold mb-3 text-emerald-950">Lịch Sử Kèo Độ Tennis</h3>
+                  <h3 className="text-base font-bold mb-3 text-emerald-950">Lịch Sử Kèo Độ Tennis (Hỗ trợ Sửa / Xóa)</h3>
                   <table className="w-full text-left text-sm">
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
@@ -653,8 +742,9 @@
                         <th className="py-2.5 px-3">Trận đấu</th>
                         <th className="py-2.5 px-3">Tỷ số</th>
                         <th className="py-2.5 px-3 text-emerald-800">Bên Thắng</th>
-                        <th className="py-2.5 px-3 text-rose-700">Bên Thua (Nộp phạt)</th>
-                        <th className="py-2.5 px-3">Mức phạt/người</th>
+                        <th className="py-2.5 px-3 text-rose-700">Bên Thua</th>
+                        <th className="py-2.5 px-3">Mức phạt</th>
+                        <th className="py-2.5 px-3 text-center">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -669,6 +759,18 @@
                             <td className="py-3 px-3 font-semibold text-emerald-900">👑 {winnerNames}</td>
                             <td className="py-3 px-3 font-semibold text-rose-700">💀 {loserNames}</td>
                             <td className="py-3 px-3 font-bold text-slate-800">{formatVND(b.amountPerLoser)}</td>
+                            <td className="py-3 px-3 text-center space-x-1">
+                              <button onClick={() => {
+                                setEditingBetId(b.id);
+                                setNewBet({ date: b.date, matchName: b.matchName, score: b.score, amountPerLoser: b.amountPerLoser, winners: b.winners, losers: b.losers });
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }} className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-xs font-bold">Sửa</button>
+                              <button onClick={() => {
+                                if(confirm('Bạn có chắc muốn xóa trận độ này?')) {
+                                  setBets(bets.filter(item => item.id !== b.id));
+                                }
+                              }} className="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded text-xs font-bold">Xóa</button>
+                            </td>
                           </tr>
                         );
                       })}

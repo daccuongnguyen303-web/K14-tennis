@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quỹ Tổ Tennis K14 - Wimbledon Edition</title>
+  <title>Quỹ Tổ Tennis K14</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -72,7 +72,6 @@
       const tennisCalculations = useMemo(() => {
         const qStart = new Date(quarterConfig.startDate);
         const qEnd = new Date(quarterConfig.endDate);
-        const totalQuarterDays = Math.max(1, Math.round((qEnd - qStart) / (1000 * 60 * 60 * 24)) + 1);
         const tennisMembers = members.filter(m => m.active && m.inTennis);
         const activeDaysMap = {};
         let sumActiveDays = 0;
@@ -156,7 +155,7 @@
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-white text-emerald-950 flex items-center justify-center font-black text-xl shadow-lg border-2 border-emerald-800">K14</div>
                 <div>
-                  <h1 className="text-lg md:text-xl font-black tracking-tight text-white uppercase">Wimbledon • Quỹ Tennis K14</h1>
+                  <h1 className="text-lg md:text-xl font-black tracking-tight text-white uppercase">Quỹ Tổ Tennis K14</h1>
                   <p className="text-xs text-emerald-300">Chủ tịch Sân: <strong className="text-white">{tennisPresident?.name}</strong> • Chủ tịch Độ: <strong className="text-white">{betPresident?.name}</strong></p>
                 </div>
               </div>
@@ -204,7 +203,6 @@
                   </div>
                 </div>
 
-                {/* Form thêm buổi đánh */}
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
                   <h2 className="text-base font-bold text-emerald-900 mb-3">+ Ghi Nhật Ký Buổi Đánh Tennis Mới</h2>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

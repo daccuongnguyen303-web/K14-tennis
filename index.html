@@ -43,11 +43,20 @@
       { id: 'b2', date: '2026-12-03', matchName: 'Siêu Kinh Điển Cuối Quý', winners: ['m1', 'm3'], losers: ['m2', 'm5'], score: '7-5', amountPerLoser: 50000, paidByLosers: [] },
     ];
 
+    const THREAT_MESSAGES = [
+      "Trốn quỹ là nghiệp quật tay vợt gãy làm đôi đấy nhé! 🎾💥",
+      "Chủ tịch đang mài sẵn dao găm, đóng tiền ngay kẻo muộn! 🔪",
+      "Sắp đến hạn rồi, chuyển khoản nhanh không Chủ tịch cử đòi nợ thuê tới nhà! 💸",
+      "Đánh tennis thì hoa mỹ mà quỹ thì âm dầm, thanh toán lẹ đi bạn ơi! 😆",
+      "Tiền có thể tiêu nhưng quỹ K14 là phải đóng đúng hẹn nghe chưa! ⚡",
+      "Đừng để Chủ tịch phải nhắc tên lần thứ 2 trên nhóm Zalo nhé! 📢",
+      "Nợ quỹ lâu quá rêu phong mọc đầy vợt rồi kìa, chốt đơn chuyển khoản nào! 🌿",
+    ];
+
     const formatVND = (num) => Math.round(num || 0).toLocaleString('vi-VN') + 'đ';
-    const isEndOfQuarterMonth = (dateStr) => dateStr ? [3, 6, 9, 12].includes(new Date(dateStr).getMonth() + 1) : false;
 
     function App() {
-      const [activeTab, setActiveTab] = useState('tennis');
+      const [activeTab, setActiveTab] = useState('notice');
       const [members, setMembers] = useState(() => JSON.parse(localStorage.getItem('k14_members')) || INITIAL_MEMBERS);
       const [tennisPresidentId, setTennisPresidentId] = useState(() => localStorage.getItem('k14_tennis_pres') || 'm1');
       const [betPresidentId, setBetPresidentId] = useState(() => localStorage.getItem('k14_bet_pres') || 'm2');
@@ -55,6 +64,12 @@
       const [sessions, setSessions] = useState(() => JSON.parse(localStorage.getItem('k14_sessions')) || INITIAL_SESSIONS);
       const [nhauList, setNhauList] = useState(() => JSON.parse(localStorage.getItem('k14_nhau')) || INITIAL_NHAU);
       const [bets, setBets] = useState(() => JSON.parse(localStorage.getItem('k14_bets')) || INITIAL_BETS);
+
+      // Random câu răn đe mỗi khi load trang/mở web
+      const randomThreat = useMemo(() => {
+        const idx = Math.floor(Math.random() * THREAT_MESSAGES.length);
+        return THREAT_MESSAGES[idx];
+      }, []);
 
       const [newSession, setNewSession] = useState({ date: '2026-12-10', water: 150000, ballBoy: 200000, balls: 0, overtime: 150000 });
       const [newNhau, setNewNhau] = useState({ date: '2026-12-12', title: '', payerId: 'm1', totalBill: 2400000, participants: ['m1', 'm2', 'm3', 'm4', 'm7', 'm8'] });
@@ -163,11 +178,12 @@
 
             <div className="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-1.5 pb-2.5">
               {[
-                { id: 'tennis', label: '🎾 1. Quỹ Sân Tennis' },
-                { id: 'nhau', label: '🍻 2. Quỹ Nhậu' },
-                { id: 'do', label: '🏆 3. Kết Quả Độ' },
-                { id: 'congno', label: '📊 4. Báo Cáo Công Nợ' },
-                { id: 'qr', label: '💳 5. VietQR' },
+                { id: 'notice', label: '📢 1. Thông Báo & Nhắc Nợ' },
+                { id: 'tennis', label: '🎾 2. Quỹ Sân Tennis' },
+                { id: 'nhau', label: '🍻 3. Quỹ Nhậu' },
+                { id: 'do', label: '🏆 4. Kết Quả Độ' },
+                { id: 'congno', label: '📊 5. Báo Cáo Công Nợ' },
+                { id: 'qr', label: '💳 6. VietQR' },
                 { id: 'members', label: '👥 Thành Viên (' + members.length + ')' },
               ].map(t => (
                 <button
@@ -182,6 +198,59 @@
           </header>
 
           <main className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
+            {activeTab === 'notice' && (
+              <div className="space-y-6">
+                <div className="bg-emerald-900 text-white p-5 rounded-2xl shadow-md border border-emerald-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">⚠️</span>
+                    <h2 className="text-lg font-black uppercase tracking-wide">Thông Báo Nhắc Đóng Quỹ Từ Ban Chấp Hành</h2>
+                  </div>
+                  <p className="text-emerald-100 text-sm leading-relaxed italic">
+                    "{randomThreat}"
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
+                  <h3 className="text-base font-bold mb-4 text-emerald-950">Bảng Tình Trạng Đóng Quỹ & Cảnh Báo Thành Viên</h3>
+                  <table className="w-full text-left text-sm">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Thành viên</th>
+                        <th className="py-2.5 px-3">Tổng nợ cần đóng</th>
+                        <th className="py-2.5 px-3">Lời răn đe / Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {personalDebts.map((p, idx) => {
+                        const hasDebt = p.totalMustPay > 0;
+                        const funnyInsults = [
+                          "Đang ngâm cứu chuyển khoản hay chờ phạt đền?",
+                          "Ví dày dặn mà sao nợ quỹ dai thế đồng chí?",
+                          "Cầm vợt thì oai mà nhắc tiền quỹ thì mất hút!",
+                          "Chuyển khoản ngay kẻo vợ tưởng quỹ đen nhé!",
+                          "Sắp bị đưa vào blacklist của sân rồi đấy!",
+                          "Nợ như chúa chổm, đề nghị thanh toán gấp!",
+                          "Đóng nhanh còn được tài trợ nước ngọt buổi tới!"
+                        ];
+                        const msg = hasDebt ? funnyInsults[idx % funnyInsults.length] : "Đã hoàn thành nghĩa vụ công dân, xuất sắc! 🌟";
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-50">
+                            <td className="py-3 px-3 font-bold text-slate-900">{p.name}</td>
+                            <td className={`py-3 px-3 font-black ${hasDebt ? 'text-rose-600' : 'text-emerald-700'}`}>
+                              {formatVND(p.totalMustPay)}
+                            </td>
+                            <td className={`py-3 px-3 text-xs italic font-medium ${hasDebt ? 'text-amber-700' : 'text-emerald-600'}`}>
+                              {msg}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'tennis' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -285,10 +354,7 @@
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
                   <h2 className="text-base font-bold text-emerald-900 mb-3">+ Ghi Nhận Trận Độ (Tự động 50k tháng cuối quý)</h2>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                    <input type="date" value={newBet.date} onChange={e => {
-                      const isEOQ = isEndOfQuarterMonth(e.target.value);
-                      setNewBet({...newBet, date: e.target.value, amountPerLoser: isEOQ ? 50000 : newBet.amountPerLoser});
-                    }} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
+                    <input type="date" value={newBet.date} onChange={e => setNewBet({...newBet, date: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
                     <input type="text" placeholder="Tên trận" value={newBet.matchName} onChange={e => setNewBet({...newBet, matchName: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
                     <input type="number" placeholder="Tiền thua/người" value={newBet.amountPerLoser} onChange={e => setNewBet({...newBet, amountPerLoser: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-emerald-900" />
                     <button onClick={() => setBets([{ ...newBet, id: 'b_' + Date.now(), paidByLosers: [] }, ...bets])} className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold py-1.5 px-3 rounded-lg text-sm">Lưu Kèo Độ</button>

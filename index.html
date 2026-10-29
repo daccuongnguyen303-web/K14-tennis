@@ -39,15 +39,24 @@
     ];
 
     const INITIAL_BETS = [
-      { id: 'b1', date: '2026-10-12', matchName: 'Đôi Nam Đỉnh Cao', winners: ['m1', 'm2'], losers: ['m3', 'm4'], score: '6-4', amountPerLoser: 30000, paidByLosers: ['m3'] },
+      { id: 'b1', date: '2026-10-12', matchName: 'Đôi Nam Đỉnh Cao', winners: ['m1', 'm2'], losers: ['m3', 'm4'], score: '6-4', amountPerLoser: 30000, paidByLosers: [] },
       { id: 'b2', date: '2026-12-03', matchName: 'Siêu Kinh Điển Cuối Quý', winners: ['m1', 'm3'], losers: ['m2', 'm5'], score: '7-5', amountPerLoser: 50000, paidByLosers: [] },
+    ];
+
+    const THREAT_MESSAGES = [
+      "⚠️ Cảnh báo: Tiền quỹ không phải lá mít! Đóng chậm lần sau ra sân đứng ngoài nhặt bóng bằng miệng, miễn đánh!",
+      "🔥 Nhắn gửi các đồng chí nợ phí: Sân bãi thì vẫn mướt, bia thì vẫn tu ừng ừng mà tiền thì lẩn đi đâu? Chuyển khoản ngay kẻo Chủ tịch gạch tên khỏi danh sách vàng!",
+      "🚨 Khất nợ là hành vi thiếu văn hóa tennis! Ai chậm đóng quỹ chuẩn bị tinh thần mang vợt đi thế chấp quán nước ven đường.",
+      "⚡ Thông báo nghiêm túc: Trốn nợ quỹ K14, ra sân gặp quả smash thẳng mặt không cần báo trước. Sống chậm lại, chuyển khoản nhanh lên các bố!",
+      "🎯 Tiền sân, tiền nhậu, tiền độ đã điểm danh đủ. Các con giợn còn nợ quỹ mau chóng nộp phạt, đừng để anh em phải dùng đến biện pháp nghiệp vụ hình sự!",
+      "💀 Đời ngắn ngủi, đừng để tên mình bêu rếu trên bảng nợ xấu K14. Sống là phải uy tín, ck ngay và luôn cho Chủ tịch!"
     ];
 
     const formatVND = (num) => Math.round(num || 0).toLocaleString('vi-VN') + 'đ';
     const isEndOfQuarterMonth = (dateStr) => dateStr ? [3, 6, 9, 12].includes(new Date(dateStr).getMonth() + 1) : false;
 
     function App() {
-      const [activeTab, setActiveTab] = useState('tennis');
+      const [activeTab, setActiveTab] = useState('thongbao');
       const [members, setMembers] = useState(() => JSON.parse(localStorage.getItem('k14_members')) || INITIAL_MEMBERS);
       const [tennisPresidentId, setTennisPresidentId] = useState(() => localStorage.getItem('k14_tennis_pres') || 'm1');
       const [betPresidentId, setBetPresidentId] = useState(() => localStorage.getItem('k14_bet_pres') || 'm2');
@@ -56,9 +65,35 @@
       const [nhauList, setNhauList] = useState(() => JSON.parse(localStorage.getItem('k14_nhau')) || INITIAL_NHAU);
       const [bets, setBets] = useState(() => JSON.parse(localStorage.getItem('k14_bets')) || INITIAL_BETS);
 
+      const [randomThreat, setRandomThreat] = useState('');
+      const [activeQR, setActiveQR] = useState(null);
+
+      useEffect(() => {
+        const chosen = THREAT_MESSAGES[Math.floor(Math.random() * THREAT_MESSAGES.length)];
+        setRandomThreat(chosen);
+      }, []);
+
       const [newSession, setNewSession] = useState({ date: '2026-12-10', water: 150000, ballBoy: 200000, balls: 0, overtime: 150000 });
-      const [newNhau, setNewNhau] = useState({ date: '2026-12-12', title: '', payerId: 'm1', totalBill: 2400000, participants: ['m1', 'm2', 'm3', 'm4', 'm7', 'm8'] });
-      const [newBet, setNewBet] = useState({ date: '2026-12-15', matchName: 'Kèo Đôi Nam', winners: ['m1'], losers: ['m3'], score: '6-4', amountPerLoser: 50000 });
+      
+      // State form tạo buổi nhậu mới
+      const [newNhau, setNewNhau] = useState({
+        date: '2026-12-12',
+        title: 'Tăng 2 sau sân',
+        payerId: 'm1',
+        totalBill: 2400000,
+        participants: INITIAL_MEMBERS.filter(m => m.inNhau).map(m => m.id)
+      });
+
+      // State form tạo trận độ mới
+      const [newBet, setNewBet] = useState({
+        date: '2026-12-15',
+        matchName: 'Kèo Đôi Nam',
+        score: '6-4',
+        amountPerLoser: 50000,
+        winners: ['m1', 'm2'],
+        losers: ['m3', 'm4']
+      });
+
       const [newMember, setNewMember] = useState({ name: '', joinDate: '2026-10-01', bankId: 'VCB', accountNo: '' });
 
       useEffect(() => { localStorage.setItem('k14_members', JSON.stringify(members)); }, [members]);
@@ -109,12 +144,13 @@
 
       const nhauCalculations = useMemo(() => {
         const stats = {};
-        members.forEach(m => { stats[m.id] = { paidOut: 0, consumed: 0, net: 0 }; });
+        members.forEach(m => { stats[m.id] = { paidOut: 0, consumed: 0, net: 0, name: m.name }; });
         nhauList.forEach(item => {
           const bill = Number(item.totalBill || 0);
           if (stats[item.payerId]) stats[item.payerId].paidOut += bill;
-          const share = bill / (item.participants.length || 1);
-          item.participants.forEach(pid => { if (stats[pid]) stats[pid].consumed += share; });
+          const count = item.participants && item.participants.length > 0 ? item.participants.length : 1;
+          const share = bill / count;
+          (item.participants || []).forEach(pid => { if (stats[pid]) stats[pid].consumed += share; });
         });
         Object.keys(stats).forEach(id => { stats[id].net = stats[id].paidOut - stats[id].consumed; });
         return { stats };
@@ -122,31 +158,49 @@
 
       const betCalculations = useMemo(() => {
         const stats = {};
-        members.forEach(m => { stats[m.id] = { unpaidAmount: 0 }; });
+        members.forEach(m => { stats[m.id] = { unpaidAmount: 0, wins: 0, losses: 0 }; });
         bets.forEach(b => {
           const amt = Number(b.amountPerLoser || 0);
-          b.losers.forEach(lid => {
-            if (stats[lid] && !(b.paidByLosers || []).includes(lid)) {
-              stats[lid].unpaidAmount += amt;
+          (b.winners || []).forEach(wid => { if (stats[wid]) stats[wid].wins += 1; });
+          (b.losers || []).forEach(lid => {
+            if (stats[lid]) {
+              stats[lid].losses += 1;
+              if (!(b.paidByLosers || []).includes(lid)) {
+                stats[lid].unpaidAmount += amt;
+              }
             }
           });
         });
         return { stats };
       }, [members, bets]);
 
-      const personalDebts = useMemo(() => {
+      const tPresident = members.find(m => m.id === tennisPresidentId) || members[0];
+      const bPresident = members.find(m => m.id === betPresidentId) || members[1];
+
+      const notificationRows = useMemo(() => {
         return members.filter(m => m.active).map(m => {
           const tInfo = tennisCalculations.memberBreakdown.find(x => x.id === m.id);
           const tennisDebt = tInfo && tInfo.balance < 0 ? Math.abs(tInfo.balance) : 0;
+          const betDebt = (betCalculations.stats[m.id] || {}).unpaidAmount || 0;
+          
           const nInfo = nhauCalculations.stats[m.id] || { net: 0 };
           const nhauDebt = nInfo.net < 0 ? Math.abs(nInfo.net) : 0;
-          const betDebt = (betCalculations.stats[m.id] || {}).unpaidAmount || 0;
-          return { ...m, tennisDebt, nhauDebt, betDebt, totalMustPay: tennisDebt + nhauDebt + betDebt };
-        });
-      }, [members, tennisCalculations, nhauCalculations, betCalculations]);
 
-      const tennisPresident = members.find(m => m.id === tennisPresidentId) || members[0];
-      const betPresident = members.find(m => m.id === betPresidentId) || members[1];
+          const latestNhau = nhauList[nhauList.length - 1];
+          const nhauPayer = members.find(x => x.id === (latestNhau ? latestNhau.payerId : 'm1')) || tPresident;
+
+          return {
+            ...m,
+            tennisDebt,
+            betDebt,
+            nhauDebt,
+            toTennisPresident: tennisDebt > 0 ? tennisDebt : 0,
+            toBetPresident: betDebt > 0 ? betDebt : 0,
+            toNhauPayer: nhauDebt > 0 ? nhauDebt : 0,
+            nhauPayerObj: nhauPayer
+          };
+        });
+      }, [members, tennisCalculations, nhauCalculations, betCalculations, nhauList, tPresident]);
 
       return (
         <div className="min-h-screen bg-slate-100 text-slate-800 pb-16">
@@ -156,18 +210,19 @@
                 <div className="w-11 h-11 rounded-2xl bg-white text-emerald-950 flex items-center justify-center font-black text-xl shadow-lg border-2 border-emerald-800">K14</div>
                 <div>
                   <h1 className="text-lg md:text-xl font-black tracking-tight text-white uppercase">Quỹ Tổ Tennis K14</h1>
-                  <p className="text-xs text-emerald-300">Chủ tịch Sân: <strong className="text-white">{tennisPresident?.name}</strong> • Chủ tịch Độ: <strong className="text-white">{betPresident?.name}</strong></p>
+                  <p className="text-xs text-emerald-300">Chủ tịch Sân: <strong className="text-white">{tPresident?.name}</strong> • Chủ tịch Độ: <strong className="text-white">{bPresident?.name}</strong></p>
                 </div>
               </div>
             </div>
 
             <div className="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-1.5 pb-2.5">
               {[
-                { id: 'tennis', label: '🎾 1. Quỹ Sân Tennis' },
-                { id: 'nhau', label: '🍻 2. Quỹ Nhậu' },
-                { id: 'do', label: '🏆 3. Kết Quả Độ' },
-                { id: 'congno', label: '📊 4. Báo Cáo Công Nợ' },
-                { id: 'qr', label: '💳 5. VietQR' },
+                { id: 'thongbao', label: '📢 1. Thông Báo & Đòi Nợ' },
+                { id: 'tennis', label: '🎾 2. Quỹ Sân Tennis' },
+                { id: 'nhau', label: '🍻 3. Quỹ Nhậu' },
+                { id: 'do', label: '🏆 4. Kết Quả Độ' },
+                { id: 'congno', label: '📊 5. Báo Cáo Công Nợ' },
+                { id: 'qr', label: '💳 6. VietQR' },
                 { id: 'members', label: '👥 Thành Viên (' + members.length + ')' },
               ].map(t => (
                 <button
@@ -182,6 +237,119 @@
           </header>
 
           <main className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
+            {activeTab === 'thongbao' && (
+              <div className="space-y-6">
+                <div className="bg-rose-50 border-2 border-rose-500 text-rose-900 p-5 rounded-2xl shadow-md flex items-start gap-4">
+                  <div className="text-3xl">👺</div>
+                  <div>
+                    <h3 className="font-black text-base text-rose-700 uppercase tracking-wide mb-1">Góc Nhắc Nợ Nghiêm Khắc Của Tổ K14</h3>
+                    <p className="text-sm font-bold leading-relaxed">{randomThreat}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                    <h2 className="text-lg font-black text-emerald-950">Bảng Nhắc Đóng Phí & Công Nợ Chi Tiết (6 Cột)</h2>
+                    <span className="text-xs text-slate-500 italic">* Bấm vào số tiền tại các cột phải đóng để hiện mã QR chuyển khoản nhanh.</span>
+                  </div>
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-3">Thành viên</th>
+                        <th className="py-3 px-3">Tiền sân bóng</th>
+                        <th className="py-3 px-3">Tiền độ</th>
+                        <th className="py-3 px-3">Tiền nhậu</th>
+                        <th className="py-3 px-3 bg-emerald-50/60 text-emerald-900">Phải đóng Chủ tịch Sân ({tPresident.name})</th>
+                        <th className="py-3 px-3 bg-amber-50/60 text-amber-900">Phải đóng Chủ tịch Độ ({bPresident.name})</th>
+                        <th className="py-3 px-3 bg-blue-50/60 text-blue-900">Phải đóng Người trả nhậu</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {notificationRows.map(row => (
+                        <tr key={row.id} className="hover:bg-slate-50">
+                          <td className="py-3 px-3 font-bold text-slate-900">{row.name}</td>
+                          <td className="py-3 px-3 font-medium text-slate-700">{formatVND(row.tennisDebt)}</td>
+                          <td className="py-3 px-3 font-medium text-slate-700">{formatVND(row.betDebt)}</td>
+                          <td className="py-3 px-3 font-medium text-slate-700">{formatVND(row.nhauDebt)}</td>
+                          
+                          <td 
+                            className="py-3 px-3 font-black text-emerald-700 bg-emerald-50/30 cursor-pointer hover:underline"
+                            title="Bấm để xem QR đóng Chủ tịch Sân"
+                            onClick={() => setActiveQR({
+                              bankId: tPresident.bankId,
+                              accountNo: tPresident.accountNo,
+                              accountName: tPresident.accountName,
+                              amount: row.toTennisPresident,
+                              label: `Đóng quỹ sân cho ${tPresident.name} (${row.name})`
+                            })}
+                          >
+                            {formatVND(row.toTennisPresident)}
+                          </td>
+
+                          <td 
+                            className="py-3 px-3 font-black text-amber-700 bg-amber-50/30 cursor-pointer hover:underline"
+                            title="Bấm để xem QR đóng Chủ tịch Độ"
+                            onClick={() => setActiveQR({
+                              bankId: bPresident.bankId,
+                              accountNo: bPresident.accountNo,
+                              accountName: bPresident.accountName,
+                              amount: row.toBetPresident,
+                              label: `Đóng quỹ độ cho ${bPresident.name} (${row.name})`
+                            })}
+                          >
+                            {formatVND(row.toBetPresident)}
+                          </td>
+
+                          <td 
+                            className="py-3 px-3 font-black text-blue-700 bg-blue-50/30 cursor-pointer hover:underline"
+                            title="Bấm để xem QR trả tiền nhậu"
+                            onClick={() => setActiveQR({
+                              bankId: row.nhauPayerObj.bankId || 'VCB',
+                              accountNo: row.nhauPayerObj.accountNo || '0011002233445',
+                              accountName: row.nhauPayerObj.accountName || 'CHỦ QUÁN',
+                              amount: row.toNhauPayer,
+                              label: `Trả tiền nhậu cho ${row.nhauPayerObj.name} (${row.name})`
+                            })}
+                          >
+                            {formatVND(row.toNhauPayer)} <span className="text-xs font-normal text-slate-400">({row.nhauPayerObj.name})</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {activeQR && (
+                  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 text-center relative">
+                      <button 
+                        onClick={() => setActiveQR(null)} 
+                        className="absolute top-4 right-4 w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-600 hover:bg-slate-200"
+                      >
+                        ✕
+                      </button>
+                      <h4 className="font-black text-base text-emerald-950 mb-1">{activeQR.label}</h4>
+                      <p className="text-xs text-slate-500 mb-3">{activeQR.bankId} • <strong className="text-slate-800">{activeQR.accountNo}</strong></p>
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-4 inline-block">
+                        <img 
+                          src={`https://img.vietqr.io/image/${activeQR.bankId}-${activeQR.accountNo}-compact2.png?amount=${activeQR.amount}&addInfo=K14&accountName=${encodeURIComponent(activeQR.accountName)}`} 
+                          alt="VietQR" 
+                          className="w-56 h-auto mx-auto rounded-xl"
+                        />
+                      </div>
+                      <div className="text-lg font-black text-rose-600 mb-4">Cần chuyển: {formatVND(activeQR.amount)}</div>
+                      <button 
+                        onClick={() => { navigator.clipboard.writeText(activeQR.accountNo); alert('Đã copy số tài khoản!'); }} 
+                        className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-sm shadow"
+                      >
+                        Copy Số Tài Khoản
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'tennis' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -242,79 +410,268 @@
               </div>
             )}
 
+            {/* TAB 3: QUỸ NHẬU - Chọn người tham gia và chia đều */}
             {activeTab === 'nhau' && (
               <div className="space-y-6">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h2 className="text-base font-bold text-emerald-900 mb-3">+ Thêm Buổi Nhậu Mới</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                    <input type="date" value={newNhau.date} onChange={e => setNewNhau({...newNhau, date: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="text" placeholder="Tên quán / Nội dung" value={newNhau.title} onChange={e => setNewNhau({...newNhau, title: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Tổng Bill" value={newNhau.totalBill} onChange={e => setNewNhau({...newNhau, totalBill: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-emerald-900" />
-                    <button onClick={() => setNhauList([...nhauList, { ...newNhau, id: 'n_' + Date.now(), title: newNhau.title || 'Nhậu K14' }])} className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold py-1.5 px-3 rounded-lg text-sm">Lưu Buổi Nhậu</button>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
+                  <h2 className="text-base font-bold text-emerald-900">+ Thêm Buổi Nhậu Mới (Tự động chia đều)</h2>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Ngày nhậu</label>
+                      <input type="date" value={newNhau.date} onChange={e => setNewNhau({...newNhau, date: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Tên quán / Nội dung</label>
+                      <input type="text" placeholder="VD: Lẩu gà sau sân" value={newNhau.title} onChange={e => setNewNhau({...newNhau, title: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Tổng tiền Bill (VNĐ)</label>
+                      <input type="number" placeholder="2400000" value={newNhau.totalBill} onChange={e => setNewNhau({...newNhau, totalBill: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-emerald-900" />
+                    </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Người đứng ra ứng tiền trước (Chủ chi)</label>
+                      <select value={newNhau.payerId} onChange={e => setNewNhau({...newNhau, payerId: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold">
+                        {members.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Chọn thành viên tham gia nhậu */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase">Thành viên tham gia nhậu (Chia đều bill):</label>
+                      <div className="space-x-2 text-xs">
+                        <button type="button" onClick={() => setNewNhau({...newNhau, participants: members.map(m => m.id)})} className="text-emerald-800 font-bold hover:underline">Chọn tất cả</button>
+                        <span>•</span>
+                        <button type="button" onClick={() => setNewNhau({...newNhau, participants: members.filter(m => m.inNhau).map(m => m.id)})} className="text-emerald-800 font-bold hover:underline">Mặc định nhóm nhậu</button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      {members.map(m => {
+                        const isChecked = newNhau.participants.includes(m.id);
+                        return (
+                          <label key={m.id} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all ${isChecked ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-white border-slate-200 text-slate-500'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked}
+                              onChange={e => {
+                                const list = e.target.checked 
+                                  ? [...newNhau.participants, m.id]
+                                  : newNhau.participants.filter(id => id !== m.id);
+                                setNewNhau({...newNhau, participants: list});
+                              }}
+                              className="rounded text-emerald-900 focus:ring-emerald-800"
+                            />
+                            <span className="truncate">{m.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      if (!newNhau.title) return alert('Vui lòng nhập tên quán hoặc nội dung nhậu!');
+                      if (newNhau.participants.length === 0) return alert('Vui lòng chọn ít nhất 1 người tham gia nhậu!');
+                      setNhauList([...nhauList, { ...newNhau, id: 'n_' + Date.now() }]);
+                      alert('Đã lưu buổi nhậu và tự động chia đều cho anh em!');
+                    }} 
+                    className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl text-sm shadow"
+                  >
+                    Lưu Buổi Nhậu & Chia Tiền
+                  </button>
                 </div>
 
+                {/* Danh sách các buổi nhậu đã lưu */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
-                  <h3 className="text-base font-bold mb-3 text-emerald-950">Danh Sách Quỹ Nhậu</h3>
+                  <h3 className="text-base font-bold mb-3 text-emerald-950">Lịch Sử Các Buổi Nhậu</h3>
                   <table className="w-full text-left text-sm">
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3">Ngày</th>
                         <th className="py-2.5 px-3">Nội dung</th>
+                        <th className="py-2.5 px-3">Người ứng tiền</th>
                         <th className="py-2.5 px-3">Tổng Bill</th>
                         <th className="py-2.5 px-3">Số người</th>
+                        <th className="py-2.5 px-3">Mỗi người trả</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {nhauList.map(n => (
-                        <tr key={n.id} className="hover:bg-slate-50">
-                          <td className="py-3 px-3 text-slate-600">{n.date}</td>
-                          <td className="py-3 px-3 font-bold text-slate-900">{n.title}</td>
-                          <td className="py-3 px-3 font-bold text-emerald-800">{formatVND(n.totalBill)}</td>
-                          <td className="py-3 px-3 text-slate-600">{n.participants.length} người</td>
-                        </tr>
-                      ))}
+                      {nhauList.map(n => {
+                        const payer = members.find(m => m.id === n.payerId) || {};
+                        const count = n.participants ? n.participants.length : 1;
+                        const perPerson = n.totalBill / count;
+                        return (
+                          <tr key={n.id} className="hover:bg-slate-50">
+                            <td className="py-3 px-3 text-slate-600">{n.date}</td>
+                            <td className="py-3 px-3 font-bold text-slate-900">{n.title}</td>
+                            <td className="py-3 px-3 text-emerald-800 font-semibold">{payer.name || 'N/A'}</td>
+                            <td className="py-3 px-3 font-bold text-emerald-900">{formatVND(n.totalBill)}</td>
+                            <td className="py-3 px-3">{count} người</td>
+                            <td className="py-3 px-3 font-bold text-slate-700">{formatVND(perPerson)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
 
+            {/* TAB 4: KẾT QUẢ ĐỘ - Chọn người chơi, chọn bên thắng/thua, tỷ số và số tiền tùy ý */}
             {activeTab === 'do' && (
               <div className="space-y-6">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10">
-                  <h2 className="text-base font-bold text-emerald-900 mb-3">+ Ghi Nhận Trận Độ (Tự động 50k tháng cuối quý)</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                    <input type="date" value={newBet.date} onChange={e => {
-                      const isEOQ = isEndOfQuarterMonth(e.target.value);
-                      setNewBet({...newBet, date: e.target.value, amountPerLoser: isEOQ ? 50000 : newBet.amountPerLoser});
-                    }} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="text" placeholder="Tên trận" value={newBet.matchName} onChange={e => setNewBet({...newBet, matchName: e.target.value})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" />
-                    <input type="number" placeholder="Tiền thua/người" value={newBet.amountPerLoser} onChange={e => setNewBet({...newBet, amountPerLoser: Number(e.target.value)})} className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-emerald-900" />
-                    <button onClick={() => setBets([{ ...newBet, id: 'b_' + Date.now(), paidByLosers: [] }, ...bets])} className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold py-1.5 px-3 rounded-lg text-sm">Lưu Kèo Độ</button>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-900/10 space-y-4">
+                  <h2 className="text-base font-bold text-emerald-900">+ Ghi Nhận Trận Độ Tennis Mới</h2>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Ngày thi đấu</label>
+                      <input 
+                        type="date" 
+                        value={newBet.date} 
+                        onChange={e => {
+                          const isEOQ = isEndOfQuarterMonth(e.target.value);
+                          setNewBet({
+                            ...newBet, 
+                            date: e.target.value,
+                            amountPerLoser: isEOQ ? 50000 : newBet.amountPerLoser
+                          });
+                        }} 
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Tên trận đấu / Kèo</label>
+                      <input 
+                        type="text" 
+                        placeholder="VD: Đôi nam siêu kinh điển" 
+                        value={newBet.matchName} 
+                        onChange={e => setNewBet({...newBet, matchName: e.target.value})} 
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Tỷ số</label>
+                      <input 
+                        type="text" 
+                        placeholder="VD: 7-5 hoặc 6-4" 
+                        value={newBet.score} 
+                        onChange={e => setNewBet({...newBet, score: e.target.value})} 
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold" 
+                      />
+                    </div>
                   </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Tiền thua / người (VNĐ)</label>
+                    <input 
+                      type="number" 
+                      value={newBet.amountPerLoser} 
+                      onChange={e => setNewBet({...newBet, amountPerLoser: Number(e.target.value)})} 
+                      className="w-full md:w-1/3 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-rose-600" 
+                    />
+                    <span className="text-xs text-slate-500 ml-2">(Tháng cuối quý tự động gợi ý 50.000đ, có thể sửa thoải mái)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    {/* Chọn bên THẮNG */}
+                    <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200">
+                      <label className="text-xs font-bold text-emerald-900 uppercase block mb-2">👑 Chọn người chơi BÊN THẮNG:</label>
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                        {members.filter(m => m.active).map(m => {
+                          const isWinner = newBet.winners.includes(m.id);
+                          return (
+                            <label key={m.id} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all ${isWinner ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700 border-slate-200'}`}>
+                              <input 
+                                type="checkbox" 
+                                checked={isWinner}
+                                onChange={e => {
+                                  const list = e.target.checked ? [...newBet.winners, m.id] : newBet.winners.filter(id => id !== m.id);
+                                  setNewBet({...newBet, winners: list});
+                                }}
+                                className="rounded text-emerald-900"
+                              />
+                              <span>{m.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Chọn bên THUA */}
+                    <div className="bg-rose-50/60 p-4 rounded-xl border border-rose-200">
+                      <label className="text-xs font-bold text-rose-900 uppercase block mb-2">💀 Chọn người chơi BÊN THUA (Nộp phạt):</label>
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                        {members.filter(m => m.active).map(m => {
+                          const isLoser = newBet.losers.includes(m.id);
+                          return (
+                            <label key={m.id} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all ${isLoser ? 'bg-rose-600 text-white border-rose-700' : 'bg-white text-slate-700 border-slate-200'}`}>
+                              <input 
+                                type="checkbox" 
+                                checked={isLoser}
+                                onChange={e => {
+                                  const list = e.target.checked ? [...newBet.losers, m.id] : newBet.losers.filter(id => id !== m.id);
+                                  setNewBet({...newBet, losers: list});
+                                }}
+                                className="rounded text-rose-900"
+                              />
+                              <span>{m.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      if (!newBet.matchName) return alert('Vui lòng nhập tên trận đấu!');
+                      if (newBet.winners.length === 0 || newBet.losers.length === 0) return alert('Vui lòng chọn đầy đủ người ở cả bên Thắng và bên Thua!');
+                      setBets([{ ...newBet, id: 'b_' + Date.now(), paidByLosers: [] }, ...bets]);
+                      alert('Đã ghi nhận kết quả độ thành công!');
+                    }} 
+                    className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-950 text-white font-bold rounded-xl text-sm shadow"
+                  >
+                    Lưu Kết Quả Trận Độ
+                  </button>
                 </div>
 
+                {/* Danh sách trận độ đã đá */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-900/10 overflow-x-auto">
-                  <h3 className="text-base font-bold mb-3 text-emerald-950">Sheet Kết Quả Độ Tennis</h3>
+                  <h3 className="text-base font-bold mb-3 text-emerald-950">Lịch Sử Kèo Độ Tennis</h3>
                   <table className="w-full text-left text-sm">
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3">Ngày</th>
                         <th className="py-2.5 px-3">Trận đấu</th>
                         <th className="py-2.5 px-3">Tỷ số</th>
-                        <th className="py-2.5 px-3">Tiền thua/người</th>
+                        <th className="py-2.5 px-3 text-emerald-800">Bên Thắng</th>
+                        <th className="py-2.5 px-3 text-rose-700">Bên Thua (Nộp phạt)</th>
+                        <th className="py-2.5 px-3">Mức phạt/người</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {bets.map(b => (
-                        <tr key={b.id} className="hover:bg-slate-50">
-                          <td className="py-3 px-3 text-slate-600">{b.date}</td>
-                          <td className="py-3 px-3 font-bold text-slate-900">{b.matchName}</td>
-                          <td className="py-3 px-3 text-emerald-700 font-bold">{b.score}</td>
-                          <td className="py-3 px-3 text-emerald-900 font-bold">{formatVND(b.amountPerLoser)}</td>
-                        </tr>
-                      ))}
+                      {bets.map(b => {
+                        const winnerNames = (b.winners || []).map(id => (members.find(m => m.id === id) || {}).name).filter(Boolean).join(', ');
+                        const loserNames = (b.losers || []).map(id => (members.find(m => m.id === id) || {}).name).filter(Boolean).join(', ');
+                        return (
+                          <tr key={b.id} className="hover:bg-slate-50">
+                            <td className="py-3 px-3 text-slate-600">{b.date}</td>
+                            <td className="py-3 px-3 font-bold text-slate-900">{b.matchName}</td>
+                            <td className="py-3 px-3 font-bold text-emerald-700">{b.score}</td>
+                            <td className="py-3 px-3 font-semibold text-emerald-900">👑 {winnerNames}</td>
+                            <td className="py-3 px-3 font-semibold text-rose-700">💀 {loserNames}</td>
+                            <td className="py-3 px-3 font-bold text-slate-800">{formatVND(b.amountPerLoser)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -335,13 +692,13 @@
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {personalDebts.map(p => (
+                    {notificationRows.map(p => (
                       <tr key={p.id} className="hover:bg-slate-50">
                         <td className="py-3 px-3 font-bold text-slate-900">{p.name}</td>
                         <td className="py-3 px-3">{p.tennisDebt > 0 ? formatVND(p.tennisDebt) : '0đ'}</td>
                         <td className="py-3 px-3">{p.nhauDebt > 0 ? formatVND(p.nhauDebt) : '0đ'}</td>
                         <td className="py-3 px-3">{p.betDebt > 0 ? formatVND(p.betDebt) : '0đ'}</td>
-                        <td className="py-3 px-3 font-black text-rose-600">{formatVND(p.totalMustPay)}</td>
+                        <td className="py-3 px-3 font-black text-rose-600">{formatVND(p.tennisDebt + p.nhauDebt + p.betDebt)}</td>
                       </tr>
                     ))}
                   </tbody>
